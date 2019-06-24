@@ -4,7 +4,6 @@ workflow "Clean stale projects" {
 }
 
 action "Default Branch" {
-  needs = "Test"
   uses = "actions/bin/filter@master"
   args = "branch gh-pages"
 }
