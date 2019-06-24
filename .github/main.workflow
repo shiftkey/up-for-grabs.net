@@ -3,7 +3,14 @@ workflow "Clean stale projects" {
   resolves = ["Cleanup archived projects"]
 }
 
+action "Default Branch" {
+  needs = "Test"
+  uses = "actions/bin/filter@master"
+  args = "branch gh-pages"
+}
+
 action "Cleanup archived projects" {
+  needs = "Default Branch"
   uses = "./.github/actions/cleanup-archived-projects"
   secrets = ["GITHUB_TOKEN"]
 }
