@@ -74,10 +74,12 @@ def check_rate_limit (client)
   resets_in = rate_limit.resets_in
   limit = rate_limit.limit
 
-  puts "Rate limit: #{remaining}/#{limit} - #{resets_in}s before reset"
+  if (remaining % 10 == 0) then
+    puts "Rate limit: #{remaining}/#{limit} - #{resets_in}s before reset"
+  end
 
   if (remaining == 0) then
-    puts "Sleeping for #{resets_in} to wait for rate-limiting to reset"
+    puts "Sleeping script for #{resets_in}s to wait for rate-limiting to reset"
     sleep resets_in
   end
 
