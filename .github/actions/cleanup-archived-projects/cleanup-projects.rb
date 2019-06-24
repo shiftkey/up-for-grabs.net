@@ -67,6 +67,22 @@ def find_owner_repo_pair (yaml)
     return nil
 end
 
+def check_rate_limit (client)
+  rate_limit = client.rate_limit
+
+  remaining = rate_limit.remaining
+  resets_in = rate_limit.resets_in
+  limit = rate_limit.limit
+
+  puts "Rate limit: #{remaining}/#{limit} - #{resets_in}s before reset"
+
+  if (remaining == 0) then
+    puts "Sleeping for #{resets_in} to wait for rate-limiting to reset"
+    sleep resets_in
+  end
+
+end
+
 def verify_file (client, path, contents)
     begin
       yaml = YAML.load(contents, :safe => true)
@@ -78,6 +94,8 @@ def verify_file (client, path, contents)
         # this likely means it's hosted elsewhere
         return { :path => path, :error => nil}
       end
+
+      check_rate_limit(client)
 
       repo = client.repo ownerAndRepo
 
@@ -99,8 +117,8 @@ def verify_file (client, path, contents)
       return  { :path => path, :error => error, :deprecated => false }
     end
 
-    return  { :path => path, :error => nil, :deprecated => false }
-  end
+  return  { :path => path, :error => nil, :deprecated => false }
+end
 
 repo = ENV['GITHUB_REPOSITORY']
 
@@ -109,6 +127,9 @@ puts "Inspecting repository files for #{repo}"
 start = Time.now
 
 client = Octokit::Client.new(:access_token => ENV['GITHUB_TOKEN'])
+
+check_rate_limit(client)
+
 link = client.archive_link(repo)
 
 pattern = Regexp.new('.*\/(_data\/projects\/.*.yml)')
