@@ -177,9 +177,9 @@ puts ''
 puts "#{success} files processed - #{errors} errors found"
 
 if (errors > 0) then
-  exit -1
-else
   exit 78
+else
+  exit 0
 end
 
 
