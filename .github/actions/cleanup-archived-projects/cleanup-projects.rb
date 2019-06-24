@@ -67,6 +67,47 @@ def find_owner_repo_pair (yaml)
     return nil
 end
 
+def create_pull_request_removing_file (client, repo, path)
+  file_name = File.basename(path, '.yml')
+  branch_name = "projects/deprecated/#{file_name}"
+  ref = "refs/heads/#{branch_name}"
+
+  # as we will run this from gh-pages periodically, we can use
+  # the SHA provided to the environment to avoid an API call
+  sha = ENV['GITHUB_SHA']
+
+  check_rate_limit (client)
+  client.create_ref(repo, ref, sha)
+
+  content = client.contents(repo, :path => path, :ref => 'gh-pages')
+
+  check_rate_limit (client)
+  client.delete_contents(repo, path, "Removing deprecated project from list", content.sha, :branch => branch_name)
+
+  check_rate_limit (client)
+  client.create_pull_request(repo, "gh-pages", branch_name, "Deprecated project: #{file_name}.yml", "This project has been marked as deprecated and can be removed from the list")
+end
+
+def find_pull_request_removing_file (client, repo, path)
+  check_rate_limit (client)
+  prs = client.pulls(repo)
+
+  found_pr = nil
+
+  prs.each { |pr|
+    check_rate_limit (client)
+    files = client.pull_request_files(repo, pr.number)
+    found = files.select { |f| f.filename == path && f.status == 'removed' }
+
+    if (found.length > 0) then
+      found_pr = pr
+      break
+    end
+  }
+
+  found_pr
+end
+
 def check_rate_limit (client)
   rate_limit = client.rate_limit
 
@@ -112,8 +153,8 @@ def verify_file (client, path, contents)
       error = "Unable to parse the contents of file - Line: #{e.line}, Offset: #{e.offset}, Problem: #{e.problem}"
       return { :path => path, :error => error, :deprecated => false }
     rescue Octokit::NotFound
-        error = "The repository no longer exists on the GitHub API"
-        return  { :path => path, :error => error, :deprecated => true }
+      error = "The repository no longer exists on the GitHub API"
+      return  { :path => path, :error => error, :deprecated => true }
     rescue
       error = "Unknown exception for file: " + $!.to_s
       return  { :path => path, :error => error, :deprecated => false }
@@ -153,8 +194,16 @@ open(link) do |archive|
 
       if (result[:deprecated]) then
         puts "Project is considered deprecated: '#{file_path}'"
-        puts ''
-        puts "TODO: check for open pull request that removes file '#{file_path}'"
+
+        pr = find_pull_request_removing_file(client, repo, file_path)
+
+        if pr != nil then
+          puts "Project #{file_path} has existing PR ##{pr.number} to remove file..."
+        else
+          pr = create_pull_request_removing_file(client, repo, file_path)
+          puts "Opened #{pr.number} to remove project '#{file_path}'..."
+        end
+
         puts ''
         errors += 1
       elsif (result[:error] != nil)
