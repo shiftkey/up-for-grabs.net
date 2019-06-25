@@ -1,9 +1,7 @@
 require 'safe_yaml'
 require 'uri'
 require 'octokit'
-require 'open-uri'
-require 'zlib'
-require 'rubygems/package'
+require 'pathname'
 
 def valid_url? (url)
     begin
@@ -127,8 +125,10 @@ def check_rate_limit (client)
 
 end
 
-def verify_file (client, path, contents)
+def verify_file (client, full_path)
     begin
+      path = Pathname.new(full_path).relative_path_from(Pathname.new(ENV['GITHUB_WORKSPACE'])).to_s
+      contents = File.read(full_path)
       yaml = YAML.load(contents, :safe => true)
 
       ownerAndRepo = find_owner_repo_pair(yaml)
@@ -174,50 +174,39 @@ client = Octokit::Client.new(:access_token => ENV['GITHUB_TOKEN'])
 
 check_rate_limit(client)
 
-link = client.archive_link(repo)
+root = ENV['GITHUB_WORKSPACE']
+projects = File.join(root, '_data', 'projects/*.yml')
 
-pattern = Regexp.new('.*\/(_data\/projects\/.*.yml)')
+results = Dir.glob(projects).map { |path| verify_file(client, path) }
 
 errors = 0
 success = 0
 
-open(link) do |archive|
-  tar_extract = Gem::Package::TarReader.new(Zlib::GzipReader.open(archive))
-  tar_extract.rewind # The extract has to be rewinded after every iteration
-  tar_extract.each do |entry|
-    if (entry.file? && pattern.match?(entry.full_name)) then
+results.each { |result|
+  file_path = result[:path]
 
-      matches = pattern.match(entry.full_name).captures
-      file_path = matches[0]
-      contents = entry.read
+  if (result[:deprecated]) then
+    puts "Project is considered deprecated: '#{file_path}'"
 
-      result = verify_file(client, file_path, contents)
+    pr = find_pull_request_removing_file(client, repo, file_path)
 
-      if (result[:deprecated]) then
-        puts "Project is considered deprecated: '#{file_path}'"
-
-        pr = find_pull_request_removing_file(client, repo, file_path)
-
-        if pr != nil then
-          puts "Project #{file_path} has existing PR ##{pr.number} to remove file..."
-        else
-          pr = create_pull_request_removing_file(client, repo, file_path)
-          puts "Opened #{pr.number} to remove project '#{file_path}'..."
-        end
-
-        puts ''
-        errors += 1
-      elsif (result[:error] != nil)
-        puts "Encountered error while trying to validate '#{file_path}' - #{result[:error]}"
-        errors += 1
-      else
-        puts "Project is active: '#{file_path}'"
-        success += 1
-      end
+    if pr != nil then
+      puts "Project #{file_path} has existing PR ##{pr.number} to remove file..."
+    else
+      pr = create_pull_request_removing_file(client, repo, file_path)
+      puts "Opened #{pr.number} to remove project '#{file_path}'..."
     end
+
+    puts ''
+    errors += 1
+  elsif (result[:error] != nil)
+    puts "Encountered error while trying to validate '#{file_path}' - #{result[:error]}"
+    errors += 1
+  else
+    puts "Project is active: '#{file_path}'"
+    success += 1
   end
-  tar_extract.close
-end
+}
 
 finish = Time.now
 delta = finish - start
