@@ -1,5 +1,5 @@
 workflow "Clean stale projects" {
-  on = "schedule(0 18 * * *)"
+  on = "schedule(0 20 * * *)"
   resolves = ["Cleanup archived projects"]
 }
 
