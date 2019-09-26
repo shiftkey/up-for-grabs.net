@@ -12,3 +12,6 @@ tags:
 upforgrabs:
   name: junior job
   link: https://github.com/godotengine/godot/labels/junior%20job
+stats:
+  issue-count: 59
+  last-updated: '2019-09-26T10:36:56Z'

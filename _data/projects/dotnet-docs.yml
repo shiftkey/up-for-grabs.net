@@ -8,3 +8,6 @@ tags:
 upforgrabs:
   name: up-for-grabs
   link: https://github.com/dotnet/docs/labels/up-for-grabs
+stats:
+  issue-count: 98
+  last-updated: '2019-09-26T05:09:02Z'
