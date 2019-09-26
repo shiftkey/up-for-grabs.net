@@ -216,12 +216,24 @@ $root_directory = ENV['GITHUB_WORKSPACE']
 $verbose = ENV['VERBOSE_OUTPUT']
 projects = File.join($root_directory, '_data', 'projects', '*.yml')
 
+current_repo = ENV['GITHUB_REPOSITORY']
+
+client = Octokit::Client.new(:access_token => ENV['GITHUB_TOKEN'])
+prs = client.pulls current_repo
+
+found_pr = prs.find { |pr| pr.title == "Updated project stats" && pr.user.login == "github-actions[bot]" }
+
+if found_pr
+  puts "There is a current PR open to update stats ##{found_pr.number} - review and merge that before we go again"
+  exit 78
+end
+
 Dir.glob(projects).each { |path| verify_file(path) }
 
 clean = true
 
 branch_name = Time.now.strftime("updated-stats-%Y%m%d")
-current_repo = ENV['GITHUB_REPOSITORY']
+
 
 Dir.chdir($root_directory) do
   system('git config --global user.name "github-actions"')
@@ -239,11 +251,6 @@ Dir.chdir($root_directory) do
 end
 
 unless clean
-  client = Octokit::Client.new(:access_token => ENV['GITHUB_TOKEN'])
-  prs = client.pulls current_repo
-
-  found_pr = prs.find { |pr| pr.head.ref == branch_name && pr.user.login == "github-actions[bot]" }
-
   body = "This PR regenerates the stats for all repositories that use a single label in a single GitHub repository"
 
   if found_pr.nil?
