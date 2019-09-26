@@ -242,7 +242,7 @@ unless clean
   client = Octokit::Client.new(:access_token => ENV['GITHUB_TOKEN'])
   prs = client.pulls current_repo
 
-  found_pr = prs.find { |pr| pr.head.ref == branch_name && pr.user.login == "github-actions[bot]" }
+  found_pr = prs.find { |pr| pr.title == "Updated project stats" && pr.user.login == "github-actions[bot]" }
 
   body = "This PR regenerates the stats for all repositories that use a single label in a single GitHub repository"
 
