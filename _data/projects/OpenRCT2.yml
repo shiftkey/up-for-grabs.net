@@ -3,14 +3,8 @@ name: OpenRCT2
 desc: An Open Source Reimplementation of RollerCoaster Tycoon 2.
 site: https://OpenRCT2.io/
 tags:
-- c
-- c++
-- game
-- rollercoasters
-- 2d
 upforgrabs:
-  name: hacktoberfest
-  link: https://github.com/OpenRCT2/OpenRCT2/labels/hacktoberfest
+  name: blah
+  link: https://foooo
 stats:
   issue-count: 19
-  last-updated: '2019-11-02T08:04:51Z'
